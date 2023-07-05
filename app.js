@@ -171,6 +171,63 @@ app.post("/:user_code/todos", async (req, res) => {
   });
 });
 
+app.patch("/:user_code/todos/:no", async (req, res) => {
+  const { user_code, no } = req.params;
+
+  const [[todoRow]] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WHERE user_code = ?
+    AND no = ?
+    `,
+    [user_code, no]
+  );
+
+  if (todoRow === undefined) {
+    res.status(404).json({
+      resultCode: "F-1",
+      msg: "not found",
+    });
+    return;
+  }
+
+  const {
+    content = todoRow.content,
+    performDate = todoRow.performDate,
+    is_completed = todoRow.is_completed,
+  } = req.body;
+
+  await pool.query(
+    `
+    UPDATE todo
+    SET updateDate = NOW(),
+    content = ?,
+    performDate = ?,
+    is_completed = ?
+    WHERE user_code = ?
+    AND no = ?
+    `,
+    [content, performDate, is_completed, user_code, no]
+  );
+
+  const [[justCreatedTodoRow]] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WHERE user_code = ?
+    AND no = ?
+    `,
+    [user_code, no]
+  );
+
+  res.json({
+    resultCode: "S-1",
+    msg: `${no}번 할 일을 수정하였습니다`,
+    data: justCreatedTodoRow,
+  });
+});
+
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
